@@ -1,0 +1,131 @@
+name: Run Financial Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: 'Unique job identifier'
+        required: true
+      pdf_base64:
+        description: 'Base64-encoded PDF file'
+        required: true
+      template_base64:
+        description: 'Base64-encoded Excel template (optional)'
+        required: false
+        default: ''
+      company_name:
+        description: 'Company name'
+        required: false
+        default: ''
+      fiscal_year:
+        description: 'Fiscal year label'
+        required: false
+        default: 'FY2022-23'
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-v2
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pdfplumber openpyxl rapidfuzz requests
+
+      - name: Decode input files
+        shell: bash
+        run: |
+          mkdir -p job_${{ github.event.inputs.job_id }}
+          python3 -c "
+          import base64, sys
+          pdf_b64 = '''${{ github.event.inputs.pdf_base64 }}'''
+          with open('job_${{ github.event.inputs.job_id }}/report.pdf', 'wb') as f:
+              f.write(base64.b64decode(pdf_b64))
+          print('PDF decoded OK')
+          "
+          TMPL_B64="${{ github.event.inputs.template_base64 }}"
+          if [ -n "$TMPL_B64" ]; then
+            python3 -c "
+          import base64
+          with open('job_${{ github.event.inputs.job_id }}/template.xlsx', 'wb') as f:
+              f.write(base64.b64decode('''$TMPL_B64'''))
+          print('Template decoded OK')
+          "
+          elif [ -f "Input_Templates.xlsx" ]; then
+            cp Input_Templates.xlsx job_${{ github.event.inputs.job_id }}/template.xlsx
+          else
+            python3 -c "
+          from openpyxl import Workbook
+          wb = Workbook()
+          wb.save('job_${{ github.event.inputs.job_id }}/template.xlsx')
+          print('Blank template created')
+          "
+          fi
+
+      - name: Run extraction pipeline
+        shell: bash
+        run: |
+          python3 pipeline.py \
+            "job_${{ github.event.inputs.job_id }}/report.pdf" \
+            "job_${{ github.event.inputs.job_id }}/template.xlsx" \
+            "job_${{ github.event.inputs.job_id }}/output.xlsx" \
+            "${{ github.event.inputs.company_name }}" \
+            "${{ github.event.inputs.fiscal_year }}"
+
+      - name: Write result JSON
+        shell: bash
+        run: |
+          mkdir -p results
+          python3 -c "
+          import json, base64, datetime
+          job_id = '${{ github.event.inputs.job_id }}'
+          company = '${{ github.event.inputs.company_name }}' or 'Unknown Company'
+          fy = '${{ github.event.inputs.fiscal_year }}' or 'FY2022-23'
+          with open(f'job_{job_id}/output.xlsx', 'rb') as f:
+              b64 = base64.b64encode(f.read()).decode()
+          result = {
+              'job_id': job_id,
+              'status': 'completed',
+              'company': company,
+              'fiscal_year': fy,
+              'timestamp': datetime.datetime.utcnow().isoformat() + 'Z',
+              'excel_b64': b64
+          }
+          with open(f'results/{job_id}.json', 'w') as f:
+              json.dump(result, f)
+          print(f'Result written: results/{job_id}.json ({len(b64)} chars b64)')
+          "
+
+      - name: Commit result
+        shell: bash
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add results/${{ github.event.inputs.job_id }}.json
+          git commit -m "result: job ${{ github.event.inputs.job_id }}"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf job_${{ github.event.inputs.job_id }}
