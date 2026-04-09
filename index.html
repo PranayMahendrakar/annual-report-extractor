@@ -7,698 +7,645 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); min-height: 100vh; color: #e0e0e0; }
-  .header { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.1); padding: 20px 40px; display: flex; align-items: center; gap: 15px; }
-  .header svg { width: 40px; height: 40px; color: #4fc3f7; }
-  .header h1 { font-size: 1.6rem; font-weight: 700; background: linear-gradient(90deg, #4fc3f7, #81d4fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .header p { font-size: 0.85rem; color: #90a4ae; margin-top: 2px; }
-  .main { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
-  .upload-section { background: rgba(255,255,255,0.05); border: 2px dashed rgba(79,195,247,0.4); border-radius: 20px; padding: 60px 40px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 30px; }
-  .upload-section:hover, .upload-section.drag-over { border-color: #4fc3f7; background: rgba(79,195,247,0.1); transform: translateY(-2px); }
-  .upload-icon { font-size: 4rem; margin-bottom: 20px; }
-  .upload-section h2 { font-size: 1.4rem; color: #4fc3f7; margin-bottom: 10px; }
-  .upload-section p { color: #90a4ae; margin-bottom: 20px; }
-  .upload-btn { background: linear-gradient(135deg, #0070c0, #00b4d8); color: white; border: none; padding: 12px 30px; border-radius: 50px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-  .upload-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,112,192,0.4); }
-  #fileInput { display: none; }
-  .file-info { background: rgba(79,195,247,0.1); border: 1px solid rgba(79,195,247,0.3); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; display: none; align-items: center; gap: 12px; }
-  .file-info.show { display: flex; }
-  .file-info-icon { font-size: 2rem; }
-  .file-info-text strong { display: block; color: #4fc3f7; }
-  .file-info-text span { font-size: 0.85rem; color: #90a4ae; }
-  .progress-container { display: none; margin-bottom: 30px; }
-  .progress-container.show { display: block; }
-  .progress-bar-wrap { background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden; margin-bottom: 8px; }
-  .progress-bar { height: 100%; background: linear-gradient(90deg, #0070c0, #4fc3f7); border-radius: 10px; width: 0%; transition: width 0.3s; }
-  .progress-text { font-size: 0.85rem; color: #90a4ae; text-align: center; }
-  .status-box { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; display: none; }
-  .status-box.show { display: block; }
-  .status-box.error { border: 1px solid rgba(255,82,82,0.4); background: rgba(255,82,82,0.1); }
-  .status-box.success { border: 1px solid rgba(0,176,80,0.4); background: rgba(0,176,80,0.1); }
-  .status-box.info { border: 1px solid rgba(79,195,247,0.3); }
-  .log-entry { font-size: 0.85rem; padding: 3px 0; color: #b0bec5; }
-  .log-entry.ok { color: #69f0ae; }
-  .log-entry.err { color: #ff5252; }
-  .log-entry.info { color: #4fc3f7; }
-  .results-section { display: none; }
-  .results-section.show { display: block; }
-  .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-  @media (max-width: 768px) { .results-grid { grid-template-columns: 1fr; } }
-  .result-card { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 25px; border: 1px solid rgba(255,255,255,0.1); }
-  .result-card h3 { font-size: 1rem; color: #4fc3f7; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-  .result-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
-  .result-row:last-child { border-bottom: none; }
-  .result-label { color: #90a4ae; }
-  .result-values { display: flex; gap: 20px; }
-  .result-val { font-weight: 600; color: #69f0ae; min-width: 100px; text-align: right; }
-  .result-val.na { color: #616161; font-weight: 400; }
-  .result-val.prior { color: #81d4fa; }
-  .result-header-row { display: flex; justify-content: flex-end; gap: 20px; margin-bottom: 5px; }
-  .result-header-row span { font-size: 0.75rem; color: #546e7a; min-width: 100px; text-align: right; font-weight: 700; text-transform: uppercase; }
-  .section-divider { margin: 15px 0 10px; padding: 5px 0; font-size: 0.75rem; font-weight: 700; color: #546e7a; text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid rgba(255,255,255,0.1); }
-  .download-section { text-align: center; margin: 30px 0; }
-  .download-btn { background: linear-gradient(135deg, #00b050, #69f0ae); color: #1a1a2e; border: none; padding: 15px 40px; border-radius: 50px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 10px; }
-  .download-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,176,80,0.4); }
-  .badge { display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; }
-  .badge-na { background: rgba(255,255,255,0.1); color: #546e7a; }
-  .badge-found { background: rgba(0,176,80,0.2); color: #69f0ae; }
-  .summary-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
-  @media (max-width: 768px) { .summary-stats { grid-template-columns: repeat(2, 1fr); } }
-  .stat-card { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
-  .stat-val { font-size: 1.5rem; font-weight: 700; color: #4fc3f7; }
-  .stat-label { font-size: 0.75rem; color: #546e7a; margin-top: 5px; text-transform: uppercase; }
-  .extract-btn { background: linear-gradient(135deg, #0070c0, #4fc3f7); color: white; border: none; padding: 15px 40px; border-radius: 50px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 10px; margin-top: 10px; }
-  .extract-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,112,192,0.4); }
-  .extract-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-  .company-input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: white; padding: 10px 15px; font-size: 1rem; width: 100%; margin-bottom: 15px; }
-  .company-input::placeholder { color: #546e7a; }
-  .company-input:focus { outline: none; border-color: #4fc3f7; }
-  .options-row { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin-bottom: 15px; }
-  .option-chip { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 8px 15px; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
-  .option-chip input { cursor: pointer; }
-  .tabs { display: flex; gap: 5px; margin-bottom: 20px; }
-  .tab { padding: 8px 20px; border-radius: 8px 8px 0 0; border: 1px solid rgba(255,255,255,0.1); border-bottom: none; cursor: pointer; font-size: 0.9rem; background: rgba(255,255,255,0.03); color: #90a4ae; }
-  .tab.active { background: rgba(79,195,247,0.15); color: #4fc3f7; border-color: rgba(79,195,247,0.3); }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-  footer { text-align: center; padding: 30px; color: #37474f; font-size: 0.8rem; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 40px; }
-  .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .table-wrap { overflow-x: auto; }
-  table.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  table.data-table th { background: rgba(79,195,247,0.15); color: #4fc3f7; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
-  table.data-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #b0bec5; }
-  table.data-table tr:hover td { background: rgba(255,255,255,0.03); }
-  table.data-table td.num { text-align: right; color: #69f0ae; font-weight: 600; font-family: monospace; }
-  table.data-table td.num.na { color: #424242; font-weight: 400; }
-  table.data-table td.num.prior { color: #81d4fa; }
-  table.data-table tr.section-row td { background: rgba(255,255,255,0.05); color: #546e7a; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 12px 4px; }
-  table.data-table tr.total-row td { font-weight: 700; color: #69f0ae; border-top: 2px solid rgba(255,255,255,0.15); }
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#0070C0;--cyan:#4fc3f7;--green:#00b050;--dark:#0d1b2a;--dark2:#1a2740;--dark3:#1e3a5f;--card:rgba(255,255,255,0.06);--border:rgba(255,255,255,0.1);--text:#e0e0e0;--muted:#78909c}
+body{font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#0d1b2a 0%,#1a2740 50%,#1e3a5f 100%);min-height:100vh;color:var(--text)}
+/* Header */
+.hdr{background:rgba(0,0,0,0.3);backdrop-filter:blur(15px);border-bottom:1px solid var(--border);padding:16px 40px;display:flex;align-items:center;gap:15px;position:sticky;top:0;z-index:100}
+.hdr-icon{font-size:2.2rem}
+.hdr h1{font-size:1.5rem;font-weight:800;background:linear-gradient(90deg,#4fc3f7,#81d4fa,#00e5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hdr p{font-size:0.8rem;color:var(--muted);margin-top:2px}
+.hdr-badge{margin-left:auto;background:rgba(0,176,80,0.15);border:1px solid rgba(0,176,80,0.3);color:#69f0ae;padding:5px 12px;border-radius:50px;font-size:0.75rem;font-weight:600}
+/* Main layout */
+.main{max-width:1300px;margin:0 auto;padding:30px 20px}
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:25px;margin-bottom:24px}
+/* Upload Zone */
+.drop-zone{border:2px dashed rgba(79,195,247,0.4);border-radius:20px;padding:50px 30px;text-align:center;cursor:pointer;transition:all .3s;background:rgba(79,195,247,0.03)}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--cyan);background:rgba(79,195,247,0.08);transform:translateY(-2px)}
+.drop-icon{font-size:3.5rem;margin-bottom:15px;filter:drop-shadow(0 0 20px rgba(79,195,247,0.4))}
+.drop-zone h2{font-size:1.3rem;color:var(--cyan);margin-bottom:8px;font-weight:700}
+.drop-zone p{color:var(--muted);margin-bottom:20px;font-size:.9rem}
+.btn-primary{background:linear-gradient(135deg,var(--blue),#00b4d8);color:#fff;border:none;padding:13px 30px;border-radius:50px;font-size:1rem;font-weight:700;cursor:pointer;transition:all .3s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,112,192,0.4)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-success{background:linear-gradient(135deg,#00b050,#69f0ae);color:#0d1b2a;border:none;padding:14px 35px;border-radius:50px;font-size:1.05rem;font-weight:800;cursor:pointer;transition:all .3s;display:inline-flex;align-items:center;gap:10px}
+.btn-success:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(0,176,80,0.4)}
+#fileInput{display:none}
+/* File Info */
+.file-info{display:none;align-items:center;gap:12px;background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.25);border-radius:12px;padding:14px 20px;margin-bottom:20px}
+.file-info.show{display:flex}
+.file-info-text strong{color:var(--cyan);display:block;font-size:1rem}
+.file-info-text span{color:var(--muted);font-size:.82rem}
+/* Options panel */
+.opts-panel{display:none;margin-bottom:20px}
+.opts-panel.show{display:block}
+.company-inp{width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:10px;color:#fff;padding:11px 16px;font-size:1rem;margin-bottom:14px}
+.company-inp:focus{outline:none;border-color:var(--cyan)}
+.company-inp::placeholder{color:#546e7a}
+.chips-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.chip{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:7px;font-size:.88rem;cursor:pointer;transition:all .2s}
+.chip:hover{border-color:var(--cyan);background:rgba(79,195,247,0.1)}
+.chip input{cursor:pointer;accent-color:var(--cyan)}
+/* Progress */
+.prog-wrap{display:none;margin-bottom:20px}
+.prog-wrap.show{display:block}
+.prog-bar-bg{background:rgba(255,255,255,0.1);border-radius:10px;height:8px;overflow:hidden;margin-bottom:7px}
+.prog-bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan));border-radius:10px;width:0%;transition:width .4s ease}
+.prog-txt{font-size:.82rem;color:var(--muted);text-align:center}
+/* Status log */
+.log-box{display:none;border-radius:12px;padding:14px 18px;margin-bottom:18px;max-height:140px;overflow-y:auto}
+.log-box.show{display:block}
+.log-box.info{border:1px solid rgba(79,195,247,0.25);background:rgba(79,195,247,0.05)}
+.log-box.success{border:1px solid rgba(0,176,80,0.35);background:rgba(0,176,80,0.07)}
+.log-box.error{border:1px solid rgba(255,82,82,0.35);background:rgba(255,82,82,0.07)}
+.log-entry{font-size:.82rem;padding:2px 0;color:#b0bec5}
+.log-entry.ok{color:#69f0ae}
+.log-entry.err{color:#ff5252}
+.log-entry.info{color:var(--cyan)}
+/* Summary stats */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:24px}
+@media(max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center;transition:transform .2s}
+.stat-card:hover{transform:translateY(-2px)}
+.stat-icon{font-size:1.5rem;margin-bottom:6px}
+.stat-val{font-size:1.4rem;font-weight:800;color:var(--cyan)}
+.stat-val.green{color:#69f0ae}
+.stat-val.orange{color:#ffa726}
+.stat-val.red{color:#ef5350}
+.stat-lbl{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+/* Tabs */
+.tabs-nav{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab-btn{padding:10px 22px;border-radius:10px 10px 0 0;border:1px solid transparent;border-bottom:none;cursor:pointer;font-size:.9rem;background:rgba(255,255,255,0.03);color:var(--muted);transition:all .2s;position:relative;bottom:-1px}
+.tab-btn.active{background:rgba(79,195,247,0.12);color:var(--cyan);border-color:rgba(79,195,247,0.3);border-bottom-color:var(--dark2)}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
+/* Tables */
+.tbl-wrap{overflow-x:auto;border-radius:12px}
+table.ft{width:100%;border-collapse:collapse;font-size:.85rem}
+table.ft th{background:rgba(79,195,247,0.12);color:var(--cyan);padding:11px 14px;text-align:left;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+table.ft th.r{text-align:right}
+table.ft td{padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:#b0bec5}
+table.ft tr:hover td{background:rgba(255,255,255,0.025)}
+table.ft td.r{text-align:right;font-family:monospace;font-weight:600;color:#69f0ae}
+table.ft td.r.na{color:#424242;font-weight:400}
+table.ft td.r.p{color:#81d4fa}
+table.ft tr.sec td{background:rgba(255,255,255,0.04);color:#546e7a;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.7px;padding:11px 14px 5px}
+table.ft tr.tot td{font-weight:700;color:#69f0ae;border-top:2px solid rgba(255,255,255,0.12)}
+table.ft tr.tot td.r{color:#4ade80}
+/* Spinner */
+.spin{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* Download area */
+.dl-area{text-align:center;padding:30px 0}
+/* Ratios */
+.ratio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:768px){.ratio-grid{grid-template-columns:repeat(2,1fr)}}
+.ratio-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.ratio-name{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.ratio-val{font-size:1.25rem;font-weight:700;color:var(--cyan)}
+/* Raw text */
+pre.raw-txt{font-size:.73rem;color:#607d8b;white-space:pre-wrap;max-height:380px;overflow-y:auto;line-height:1.5;border-radius:8px;background:rgba(0,0,0,.2);padding:15px;margin-top:10px}
+footer{text-align:center;padding:25px;color:#37474f;font-size:.78rem;border-top:1px solid rgba(255,255,255,.05);margin-top:30px}
+.results-section{display:none}
+.results-section.show{display:block}
+.section-title{font-size:1rem;font-weight:700;color:var(--cyan);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.github-link{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:.8rem;text-decoration:none;padding:5px 12px;border:1px solid var(--border);border-radius:8px;transition:all .2s;margin-left:auto}
+.github-link:hover{color:var(--text);border-color:var(--cyan)}
 </style>
 </head>
 <body>
-<div class="header">
-  <svg viewBox="0 0 24 24" fill="currentColor">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM12 18H8v-2h4v2zm4-4H8v-2h8v2zm0-4H8V8h8v2z"/>
-  </svg>
+<div class="hdr">
+  <div class="hdr-icon">📊</div>
   <div>
     <h1>Annual Report Financial Data Extractor</h1>
-    <p>Upload a company annual report PDF to extract Balance Sheet &amp; P&amp;L data as Excel</p>
+    <p>Upload PDF → Extract Balance Sheet &amp; P&amp;L → Download Excel · Runs 100% in your browser</p>
   </div>
+  <span class="hdr-badge">🔒 No Data Uploaded</span>
 </div>
 
 <div class="main">
-  <!-- Upload Section -->
-  <div class="upload-section" id="dropZone">
-    <div class="upload-icon">📄</div>
-    <h2>Drop your Annual Report PDF here</h2>
-    <p>Supports PDF annual reports. Extracts Balance Sheet and P&amp;L Statement data automatically.</p>
-    <input type="file" id="fileInput" accept=".pdf">
-    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
-      📂 Browse PDF File
-    </button>
-  </div>
 
-  <!-- File Info -->
-  <div class="file-info" id="fileInfo">
-    <div class="file-info-icon">📋</div>
-    <div class="file-info-text">
-      <strong id="fileName">—</strong>
-      <span id="fileSize">—</span>
-    </div>
-  </div>
-
-  <!-- Company Name & Options -->
-  <div id="optionsPanel" style="display:none; margin-bottom:20px;">
-    <input type="text" class="company-input" id="companyName" placeholder="Company name (auto-detected or enter manually)">
-    <div class="options-row">
-      <label class="option-chip"><input type="checkbox" id="optStandalone" checked> Standalone</label>
-      <label class="option-chip"><input type="checkbox" id="optConsolidated"> Consolidated</label>
-      <label class="option-chip"><input type="checkbox" id="optPrevYear" checked> Include Prior Year</label>
-    </div>
-    <div style="text-align:center;">
-      <button class="extract-btn" id="extractBtn" onclick="extractData()">
-        <span class="spinner" id="spinner" style="display:none;"></span>
-        <span id="extractBtnText">⚡ Extract Financial Data</span>
+  <!-- Upload Card -->
+  <div class="card">
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-icon">📄</div>
+      <h2>Drop your Annual Report PDF here</h2>
+      <p>Supports any company annual report PDF · Extracts Balance Sheet &amp; P&amp;L data automatically</p>
+      <input type="file" id="fileInput" accept=".pdf">
+      <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
+        📂 Browse PDF File
       </button>
+    </div>
+
+    <div class="file-info" id="fileInfo">
+      <span style="font-size:2rem">📋</span>
+      <div class="file-info-text">
+        <strong id="fileName">—</strong>
+        <span id="fileSize">—</span>
+      </div>
+    </div>
+
+    <div class="opts-panel" id="optsPanel">
+      <input type="text" class="company-inp" id="companyName" placeholder="Company name (auto-detected or type manually)">
+      <div class="chips-row">
+        <label class="chip"><input type="checkbox" id="optStandalone" checked> Standalone</label>
+        <label class="chip"><input type="checkbox" id="optConsolidated"> Consolidated</label>
+        <label class="chip"><input type="checkbox" id="optPrevYear" checked> Include Prior Year</label>
+        <label class="chip"><input type="checkbox" id="optRatios" checked> Financial Ratios</label>
+      </div>
+      <div style="text-align:center">
+        <button class="btn-primary" id="extractBtn" onclick="extractData()">
+          <span class="spin" id="spinner" style="display:none"></span>
+          <span id="extractBtnText">⚡ Extract Financial Data</span>
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- Progress -->
-  <div class="progress-container" id="progressContainer">
-    <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
-    <div class="progress-text" id="progressText">Initializing...</div>
+  <div class="prog-wrap" id="progWrap">
+    <div class="prog-bar-bg"><div class="prog-bar" id="progBar"></div></div>
+    <div class="prog-txt" id="progTxt">Initializing...</div>
   </div>
 
-  <!-- Status Log -->
-  <div class="status-box" id="statusBox">
-    <div id="statusLog"></div>
+  <!-- Log -->
+  <div class="log-box" id="logBox">
+    <div id="logContent"></div>
   </div>
 
   <!-- Results -->
   <div class="results-section" id="resultsSection">
-    <div class="summary-stats" id="summaryStats"></div>
-    <div class="tabs">
-      <div class="tab active" onclick="showTab('bs')">📊 Balance Sheet</div>
-      <div class="tab" onclick="showTab('pl')">📈 P&amp;L Statement</div>
-      <div class="tab" onclick="showTab('raw')">📝 Raw Text Preview</div>
-    </div>
-    <div class="tab-content active" id="tab-bs">
-      <div class="result-card"><div class="table-wrap"><table class="data-table" id="bsTable"></table></div></div>
-    </div>
-    <div class="tab-content" id="tab-pl">
-      <div class="result-card"><div class="table-wrap"><table class="data-table" id="plTable"></table></div></div>
-    </div>
-    <div class="tab-content" id="tab-raw">
-      <div class="result-card">
-        <h3>Extracted Text Preview (first 3000 chars)</h3>
-        <pre id="rawText" style="font-size:0.75rem; color:#78909c; white-space:pre-wrap; max-height:400px; overflow-y:auto; margin-top:10px;"></pre>
+
+    <!-- Summary Stats -->
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <!-- Tabs -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tabs-nav" style="padding:0 20px;background:rgba(0,0,0,.15)">
+        <button class="tab-btn active" onclick="showTab('bs')">📊 Balance Sheet</button>
+        <button class="tab-btn" onclick="showTab('pl')">📈 P&amp;L Statement</button>
+        <button class="tab-btn" onclick="showTab('ratios')">📐 Financial Ratios</button>
+        <button class="tab-btn" onclick="showTab('raw')">📝 Raw Text</button>
+        <a class="github-link" href="https://github.com/PranayMahendrakar/annual-report-extractor" target="_blank">⭐ GitHub</a>
+      </div>
+      <div style="padding:20px">
+
+        <div class="tab-pane active" id="tab-bs">
+          <div class="section-title">📊 Balance Sheet Summary</div>
+          <div class="tbl-wrap"><table class="ft" id="bsTable"></table></div>
+        </div>
+
+        <div class="tab-pane" id="tab-pl">
+          <div class="section-title">📈 Profit &amp; Loss Statement</div>
+          <div class="tbl-wrap"><table class="ft" id="plTable"></table></div>
+        </div>
+
+        <div class="tab-pane" id="tab-ratios">
+          <div class="section-title">📐 Key Financial Ratios</div>
+          <div class="ratio-grid" id="ratioGrid"></div>
+        </div>
+
+        <div class="tab-pane" id="tab-raw">
+          <div class="section-title">📝 Extracted Text Preview</div>
+          <pre class="raw-txt" id="rawTxt">—</pre>
+        </div>
+
       </div>
     </div>
-    <div class="download-section">
-      <button class="download-btn" onclick="downloadExcel()">
+
+    <!-- Download -->
+    <div class="dl-area">
+      <button class="btn-success" onclick="downloadExcel()">
         📥 Download Excel Report
       </button>
+      <p style="color:var(--muted);font-size:.8rem;margin-top:10px">Excel file includes Balance Sheet, P&amp;L, and Ratios on separate sheets</p>
     </div>
   </div>
+
 </div>
 
-<footer>
-  Annual Report Financial Data Extractor &nbsp;|&nbsp; Runs entirely in your browser &nbsp;|&nbsp; No data is uploaded to any server
-</footer>
-
+<footer>Annual Report Financial Data Extractor &nbsp;|&nbsp; 100% Browser-Based · No Server · No Data Upload &nbsp;|&nbsp; <a href="https://github.com/PranayMahendrakar/annual-report-extractor" style="color:#546e7a">GitHub</a></footer>
 <script>
-// ─── Global State ───────────────────────────────────────────────────────────
-let pdfText = '';
-let extractedData = null;
+// ── Setup ─────────────────────────────────────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let pdfText='', extractedData=null;
 
-// ─── PDF.js Setup ───────────────────────────────────────────────────────────
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+// ── Drag & Drop ───────────────────────────────────────────────────────────────
+const dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f&&f.type==='application/pdf')handleFile(f);else log('Please drop a valid PDF file','err')});
+document.getElementById('fileInput').addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0])});
 
-// ─── Drag & Drop ────────────────────────────────────────────────────────────
-const dropZone = document.getElementById('dropZone');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file && file.type === 'application/pdf') handleFile(file);
-  else addLog('Please drop a PDF file.', 'err');
-});
-document.getElementById('fileInput').addEventListener('change', e => {
-  if (e.target.files[0]) handleFile(e.target.files[0]);
-});
-
-// ─── File Handler ────────────────────────────────────────────────────────────
-function handleFile(file) {
-  document.getElementById('fileName').textContent = file.name;
-  document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+// ── File Handler ──────────────────────────────────────────────────────────────
+function handleFile(file){
+  document.getElementById('fileName').textContent=file.name;
+  document.getElementById('fileSize').textContent=(file.size/1024/1024).toFixed(2)+' MB | '+Math.round(file.size/1024)+' KB';
   document.getElementById('fileInfo').classList.add('show');
-  document.getElementById('optionsPanel').style.display = 'block';
-  // Auto-detect company name from filename
-  const cn = file.name.replace(/\.pdf$/i, '').replace(/[_-]/g, ' ').trim();
-  document.getElementById('companyName').value = cn;
+  document.getElementById('optsPanel').classList.add('show');
+  const cn=file.name.replace(/\.pdf$/i,'').replace(/[_\-]/g,' ').trim();
+  document.getElementById('companyName').value=cn;
   document.getElementById('resultsSection').classList.remove('show');
-  document.getElementById('statusBox').classList.remove('show');
-  window._currentFile = file;
-  addLog('File loaded: ' + file.name, 'ok');
-  showStatus('info');
+  document.getElementById('logBox').classList.remove('show');
+  window._file=file;
+  log('File ready: '+file.name,'ok');
+  showLog('info');
 }
 
-// ─── Status / Log ────────────────────────────────────────────────────────────
-function showStatus(type) {
-  const box = document.getElementById('statusBox');
-  box.className = 'status-box show ' + type;
+// ── Log & Progress ────────────────────────────────────────────────────────────
+function log(msg,type='info'){
+  const d=document.getElementById('logContent');
+  const e=document.createElement('div');
+  e.className='log-entry '+type;
+  e.textContent=(type==='ok'?'✓ ':type==='err'?'✗ ':'ℹ ')+msg;
+  d.appendChild(e);d.scrollTop=d.scrollHeight;
 }
-function addLog(msg, type = 'info') {
-  const log = document.getElementById('statusLog');
-  const div = document.createElement('div');
-  div.className = 'log-entry ' + type;
-  div.textContent = (type === 'ok' ? '✓ ' : type === 'err' ? '✗ ' : 'ℹ ') + msg;
-  log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
-}
-function setProgress(pct, msg) {
-  document.getElementById('progressBar').style.width = pct + '%';
-  document.getElementById('progressText').textContent = msg;
-  document.getElementById('progressContainer').classList.add('show');
-}
-function hideProgress() { document.getElementById('progressContainer').classList.remove('show'); }
+function showLog(cls){const b=document.getElementById('logBox');b.className='log-box show '+cls}
+function setProgress(pct,msg){document.getElementById('progBar').style.width=pct+'%';document.getElementById('progTxt').textContent=msg;document.getElementById('progWrap').classList.add('show')}
+function hideProgress(){document.getElementById('progWrap').classList.remove('show')}
 
-// ─── Tab Switching ────────────────────────────────────────────────────────────
-function showTab(name) {
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    const names = ['bs', 'pl', 'raw'];
-    t.classList.toggle('active', names[i] === name);
-  });
-  document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
+// ── Tab Switch ────────────────────────────────────────────────────────────────
+function showTab(name){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{const ns=['bs','pl','ratios','raw'];b.classList.toggle('active',ns[i]===name)});
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
 }
 
-// ─── Main Extraction ─────────────────────────────────────────────────────────
-async function extractData() {
-  if (!window._currentFile) { addLog('Please select a file first.', 'err'); return; }
-  
-  const btn = document.getElementById('extractBtn');
-  const spinner = document.getElementById('spinner');
-  const btnText = document.getElementById('extractBtnText');
-  btn.disabled = true;
-  spinner.style.display = 'inline-block';
-  btnText.textContent = 'Extracting...';
-  document.getElementById('statusLog').innerHTML = '';
-  showStatus('info');
-  
-  try {
-    // Step 1: Read PDF
-    setProgress(10, 'Reading PDF...');
-    addLog('Loading PDF...', 'info');
-    const arrayBuffer = await window._currentFile.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    addLog('PDF loaded: ' + pdf.numPages + ' pages', 'ok');
-    
-    // Step 2: Extract text
-    setProgress(30, 'Extracting text from PDF...');
-    let text = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      setProgress(30 + (i / pdf.numPages * 30), 'Reading page ' + i + '/' + pdf.numPages);
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const pageText = content.items.map(item => item.str).join(' ') + '\n';
-      text += pageText;
-    }
-    pdfText = text;
-    addLog('Text extracted: ' + text.length + ' characters', 'ok');
-    document.getElementById('rawText').textContent = text.substring(0, 3000);
-    
-    // Step 3: Parse financial data
-    setProgress(70, 'Parsing financial statements...');
-    addLog('Parsing Balance Sheet...', 'info');
-    const bs = parseBalanceSheet(text);
-    addLog('Parsing P&L Statement...', 'info');
-    const pl = parsePL(text);
-    
-    // Step 4: Compile results
-    const company = document.getElementById('companyName').value || 'Unknown Company';
-    extractedData = { company, bs, pl, text };
-    
-    setProgress(90, 'Rendering results...');
-    renderResults(bs, pl);
-    
-    setProgress(100, 'Done!');
-    addLog('Extraction complete!', 'ok');
-    showStatus('success');
-    hideProgress();
-    document.getElementById('resultsSection').classList.add('show');
-    
-  } catch(err) {
-    addLog('Error: ' + err.message, 'err');
-    showStatus('error');
-    hideProgress();
-    console.error(err);
-  } finally {
-    btn.disabled = false;
-    spinner.style.display = 'none';
-    btnText.textContent = '⚡ Extract Financial Data';
-  }
-}
-</script>
-<script>
-// ─── Number Parser ────────────────────────────────────────────────────────────
-function parseNum(s) {
-  if (!s) return null;
-  s = s.toString().trim();
-  if (s === '-' || s === '—' || s === '') return null;
-  const n = parseFloat(s.replace(/,/g, ''));
-  return isNaN(n) ? null : n;
-}
+// ── Number Helpers ─────────────────────────────────────────────────────────────
+function parseNum(s){if(!s)return null;s=s.toString().trim();if(s==='-'||s==='—'||s==='')return null;const n=parseFloat(s.replace(/,/g,''));return isNaN(n)?null:n}
+function lineNums(line){return((line||'').match(/[\d,]+\.\d+/g)||[]).map(n=>parseFloat(n.replace(/,/g,'')))}
+function findLine(lines,kw,start=0){for(let i=start;i<lines.length;i++)if(lines[i].toLowerCase().includes(kw.toLowerCase()))return lines[i];return null}
+function findIdx(lines,kw,start=0){for(let i=start;i<lines.length;i++)if(lines[i].toLowerCase().includes(kw.toLowerCase()))return i;return start}
+function twoVals(lines,kw,start=0){const ln=findLine(lines,kw,start);if(!ln)return[null,null];const v=lineNums(ln);if(v.length>=2)return[v[v.length-2],v[v.length-1]];if(v.length===1)return[v[0],null];return[null,null]}
 
-function lineVals(line) {
-  const nums = (line || '').match(/[\d,]+\.\d+/g) || [];
-  return nums.map(n => parseFloat(n.replace(/,/g, '')));
-}
-
-function findLine(lines, keyword, start = 0) {
-  for (let i = start; i < lines.length; i++) {
-    if (lines[i].toLowerCase().includes(keyword.toLowerCase())) return lines[i];
-  }
-  return null;
-}
-
-function findLineIdx(lines, keyword, start = 0) {
-  for (let i = start; i < lines.length; i++) {
-    if (lines[i].toLowerCase().includes(keyword.toLowerCase())) return i;
-  }
-  return start;
-}
-
-function twoVals(lines, keyword, start = 0) {
-  const ln = findLine(lines, keyword, start);
-  if (!ln) return [null, null];
-  const vals = lineVals(ln);
-  if (vals.length >= 2) return [vals[vals.length - 2], vals[vals.length - 1]];
-  if (vals.length === 1) return [vals[0], null];
-  return [null, null];
-}
-
-// ─── Balance Sheet Parser ─────────────────────────────────────────────────────
-function parseBalanceSheet(text) {
-  const lines = text.split(/\n/);
-  const bs = { cur: {}, pri: {} };
-
-  const clStart = findLineIdx(lines, 'Current Liabilities');
-  const nclStart = findLineIdx(lines, 'Non Current Liabilities', clStart);
-  const caStart = findLineIdx(lines, 'Current Assets', nclStart);
-  const ncaStart = findLineIdx(lines, 'Non Current Assets', caStart);
+// ── Balance Sheet Parser ───────────────────────────────────────────────────────
+function parseBS(text){
+  const lines=text.split(/\n/);
+  const bs={c:{},p:{}};
+  const clIdx=findIdx(lines,'Current Liabilities');
+  const nclIdx=findIdx(lines,'Non Current Liabilities',clIdx)||findIdx(lines,'Non-Current Liabilities',clIdx);
+  const caIdx=findIdx(lines,'Current Assets',nclIdx);
+  const ncaIdx=findIdx(lines,'Non Current Assets',caIdx)||findIdx(lines,'Non-Current Assets',caIdx);
 
   // Equity
-  [bs.cur.shareCapital, bs.pri.shareCapital] = twoVals(lines, 'Equity Share Capital');
-  
-  const oeL = findLine(lines, 'Other Equity');
-  if (oeL) {
-    const v = lineVals(oeL);
-    if (v.length >= 4) { bs.cur.otherEquity = v[0]; bs.cur.totalNetworth = v[1]; bs.pri.otherEquity = v[2]; bs.pri.totalNetworth = v[3]; }
-    else if (v.length >= 2) { bs.cur.otherEquity = v[0]; bs.pri.otherEquity = v[1]; }
-  }
-  if (!bs.cur.totalNetworth) {
-    const tn = findLine(lines, 'Total Equity') || findLine(lines, 'Total Shareholders');
-    if (tn) { const v = lineVals(tn); bs.cur.totalNetworth = v[0]; bs.pri.totalNetworth = v[1]; }
-  }
+  [bs.c.shareCapital,bs.p.shareCapital]=twoVals(lines,'Equity Share Capital');
+  const oeL=findLine(lines,'Other Equity');
+  if(oeL){const v=lineNums(oeL);if(v.length>=4){bs.c.otherEquity=v[0];bs.c.networth=v[1];bs.p.otherEquity=v[2];bs.p.networth=v[3]}else if(v.length>=2){bs.c.otherEquity=v[0];bs.p.otherEquity=v[1]}}
+  if(!bs.c.networth){const tn=findLine(lines,'Total Equity')||findLine(lines,'Total Shareholders');if(tn){const v=lineNums(tn);bs.c.networth=v[0];bs.p.networth=v[1]}}
 
   // Current Liabilities
-  [bs.cur.shortTermBorrowings, bs.pri.shortTermBorrowings] = twoVals(lines, 'Borrowing', clStart);
-  [bs.cur.otherCurrentLiab, bs.pri.otherCurrentLiab] = twoVals(lines, 'Other Current Liabilities', clStart);
-  [bs.cur.otherFinLiabCL, bs.pri.otherFinLiabCL] = twoVals(lines, 'Other Financial Liabilities', clStart);
-
-  // Trade payables
-  const msmeL = findLine(lines, 'Micro Enterprises', clStart);
-  const otherCrL = findLine(lines, 'creditors other', clStart) || findLine(lines, 'Trade Payable', clStart);
-  if (msmeL && otherCrL) {
-    const mv = lineVals(msmeL); const ov = lineVals(otherCrL);
-    bs.cur.accountsPayable = (mv[0] || 0) + (ov[0] || 0);
-    bs.pri.accountsPayable = (mv[1] || 0) + (ov[1] || 0);
-  } else if (otherCrL) {
-    const v = lineVals(otherCrL); bs.cur.accountsPayable = v[0]; bs.pri.accountsPayable = v[1];
-  }
-
-  const provCLL = findLine(lines, '(d) Provisions', clStart);
-  if (provCLL) {
-    const v = lineVals(provCLL);
-    if (v.length >= 4) { bs.cur.provisionsCL = v[0]; bs.cur.totalCurrentLiab = v[1]; bs.pri.provisionsCL = v[2]; bs.pri.totalCurrentLiab = v[3]; }
-    else if (v.length >= 2) { bs.cur.provisionsCL = v[0]; bs.pri.provisionsCL = v[1]; }
-  }
-  if (!bs.cur.totalCurrentLiab) {
-    const tclL = findLine(lines, 'Total Current Liabilities', clStart);
-    if (tclL) { const v = lineVals(tclL); bs.cur.totalCurrentLiab = v[0]; bs.pri.totalCurrentLiab = v[1]; }
-  }
+  [bs.c.stBorrow,bs.p.stBorrow]=twoVals(lines,'Borrowing',clIdx);
+  [bs.c.tradePayable,bs.p.tradePayable]=twoVals(lines,'Trade Payable',clIdx);
+  if(!bs.c.tradePayable){const msme=findLine(lines,'Micro Enterprises',clIdx);const other=findLine(lines,'creditors other',clIdx);if(msme&&other){const mv=lineNums(msme);const ov=lineNums(other);bs.c.tradePayable=(mv[0]||0)+(ov[0]||0);bs.p.tradePayable=(mv[1]||0)+(ov[1]||0)}}
+  [bs.c.otherCurLiab,bs.p.otherCurLiab]=twoVals(lines,'Other Current Liabilities',clIdx);
+  [bs.c.otherFinLiabCL,bs.p.otherFinLiabCL]=twoVals(lines,'Other Financial Liabilities',clIdx);
+  [bs.c.provisionCL,bs.p.provisionCL]=twoVals(lines,'Provisions',clIdx);
+  const tclL=findLine(lines,'Total Current Liabilities',clIdx);
+  if(tclL){const v=lineNums(tclL);bs.c.totalCL=v[0];bs.p.totalCL=v[1]}
 
   // Non-Current Liabilities
-  [bs.cur.ltBorrowings, bs.pri.ltBorrowings] = twoVals(lines, 'Borrowing', nclStart);
-  [bs.cur.otherFinLiabNCL, bs.pri.otherFinLiabNCL] = twoVals(lines, 'Other Financial Liabilities', nclStart);
-  [bs.cur.othersNCL, bs.pri.othersNCL] = twoVals(lines, 'Other Non Current Liabilities', nclStart);
+  [bs.c.ltBorrow,bs.p.ltBorrow]=twoVals(lines,'Borrowing',nclIdx);
+  [bs.c.otherFinLiabNCL,bs.p.otherFinLiabNCL]=twoVals(lines,'Other Financial Liabilities',nclIdx);
+  [bs.c.othersNCL,bs.p.othersNCL]=twoVals(lines,'Other Non Current Liabilities',nclIdx);
+  [bs.c.provisionNCL,bs.p.provisionNCL]=twoVals(lines,'Provisions',nclIdx);
+  const tnclL=findLine(lines,'Total Non-Current Liabilities',nclIdx)||findLine(lines,'Total Non Current Liabilities',nclIdx);
+  if(tnclL){const v=lineNums(tnclL);bs.c.totalNCL=v[0];bs.p.totalNCL=v[1]}
 
-  const provNCLL = findLine(lines, 'Provisions', nclStart);
-  if (provNCLL) {
-    const v = lineVals(provNCLL);
-    if (v.length >= 4) { bs.cur.provisionNCL = v[0]; bs.cur.totalNCL = v[1]; bs.pri.provisionNCL = v[2]; bs.pri.totalNCL = v[3]; }
-    else if (v.length >= 2) { bs.cur.provisionNCL = v[0]; bs.pri.provisionNCL = v[1]; }
-  }
-  if (!bs.cur.totalNCL) {
-    const tnclL = findLine(lines, 'Total Non-Current Liabilities', nclStart) || findLine(lines, 'Total Non Current Liabilities', nclStart);
-    if (tnclL) { const v = lineVals(tnclL); bs.cur.totalNCL = v[0]; bs.pri.totalNCL = v[1]; }
-  }
-
-  if (bs.cur.totalCurrentLiab && bs.cur.totalNCL) bs.cur.totalLiab = bs.cur.totalCurrentLiab + bs.cur.totalNCL;
-  if (bs.pri.totalCurrentLiab && bs.pri.totalNCL) bs.pri.totalLiab = bs.pri.totalCurrentLiab + bs.pri.totalNCL;
+  if(bs.c.totalCL&&bs.c.totalNCL){bs.c.totalLiab=bs.c.totalCL+bs.c.totalNCL}
+  if(bs.p.totalCL&&bs.p.totalNCL){bs.p.totalLiab=bs.p.totalCL+bs.p.totalNCL}
 
   // Current Assets
-  [bs.cur.inventory, bs.pri.inventory] = twoVals(lines, 'Inventories', caStart);
-  [bs.cur.accountsReceivable, bs.pri.accountsReceivable] = twoVals(lines, 'Trade Receivable', caStart);
-  [bs.cur.cashEq, bs.pri.cashEq] = twoVals(lines, 'Cash and cash Equivalent', caStart);
-  [bs.cur.bankBalance, bs.pri.bankBalance] = twoVals(lines, 'Other Balances with Bank', caStart);
-  [bs.cur.loansCA, bs.pri.loansCA] = twoVals(lines, 'Loans', caStart);
-  [bs.cur.otherFinAssetsCA, bs.pri.otherFinAssetsCA] = twoVals(lines, 'Other Financial Assets', caStart);
-
-  const otherCAL = findLine(lines, 'Other current Assets', caStart) || findLine(lines, 'Other Current Assets', caStart);
-  if (otherCAL) {
-    const v = lineVals(otherCAL);
-    if (v.length >= 4) { bs.cur.otherCurrentAssets = v[0]; bs.cur.totalCurrentAssets = v[1]; bs.pri.otherCurrentAssets = v[2]; bs.pri.totalCurrentAssets = v[3]; }
-    else if (v.length >= 2) { bs.cur.otherCurrentAssets = v[0]; bs.pri.otherCurrentAssets = v[1]; }
-  }
-  if (!bs.cur.totalCurrentAssets) {
-    const tcaL = findLine(lines, 'Total Current Assets', caStart);
-    if (tcaL) { const v = lineVals(tcaL); bs.cur.totalCurrentAssets = v[0]; bs.pri.totalCurrentAssets = v[1]; }
-  }
+  [bs.c.inventory,bs.p.inventory]=twoVals(lines,'Inventories',caIdx);
+  [bs.c.receivables,bs.p.receivables]=twoVals(lines,'Trade Receivable',caIdx);
+  [bs.c.cash,bs.p.cash]=twoVals(lines,'Cash and cash Equivalent',caIdx);
+  [bs.c.bankBal,bs.p.bankBal]=twoVals(lines,'Other Balances with Bank',caIdx);
+  [bs.c.loansCA,bs.p.loansCA]=twoVals(lines,'Loans',caIdx);
+  [bs.c.otherFinAssetsCA,bs.p.otherFinAssetsCA]=twoVals(lines,'Other Financial Assets',caIdx);
+  const otherCAL=findLine(lines,'Other Current Assets',caIdx)||findLine(lines,'Other current Assets',caIdx);
+  if(otherCAL){const v=lineNums(otherCAL);if(v.length>=4){bs.c.otherCA=v[0];bs.c.totalCA=v[1];bs.p.otherCA=v[2];bs.p.totalCA=v[3]}else if(v.length>=2){bs.c.otherCA=v[0];bs.p.otherCA=v[1]}}
+  if(!bs.c.totalCA){const tcaL=findLine(lines,'Total Current Assets',caIdx);if(tcaL){const v=lineNums(tcaL);bs.c.totalCA=v[0];bs.p.totalCA=v[1]}}
 
   // Non-Current Assets
-  [bs.cur.fixedAssets, bs.pri.fixedAssets] = twoVals(lines, 'Property, Plant', ncaStart);
-  [bs.cur.investmentsNCA, bs.pri.investmentsNCA] = twoVals(lines, 'Investment', ncaStart);
-  [bs.cur.loansNCA, bs.pri.loansNCA] = twoVals(lines, 'Loans', ncaStart);
-
-  const cwipL = findLine(lines, 'Capital work', ncaStart);
-  if (cwipL) { const v = lineVals(cwipL); bs.cur.cwip = v[0]; bs.pri.cwip = v[1] || 0; }
-
-  const dtaL = findLine(lines, 'Deferred Tax', ncaStart);
-  if (dtaL) {
-    const v = lineVals(dtaL);
-    if (v.length >= 4) { bs.cur.dta = v[0]; bs.cur.totalNCA = v[1]; bs.pri.dta = v[2]; bs.pri.totalNCA = v[3]; }
-    else if (v.length >= 2) { bs.cur.dta = v[0]; bs.pri.dta = v[1]; }
-  }
-  if (!bs.cur.totalNCA) {
-    const tncaL = findLine(lines, 'Total Non-Current Assets', ncaStart) || findLine(lines, 'Total Non Current Assets', ncaStart);
-    if (tncaL) { const v = lineVals(tncaL); bs.cur.totalNCA = v[0]; bs.pri.totalNCA = v[1]; }
-  }
-
-  const taL = findLine(lines, 'TOTAL ASSETS') || findLine(lines, 'Total Assets');
-  if (taL) { const v = lineVals(taL); bs.cur.totalAssets = v[0]; bs.pri.totalAssets = v[1]; }
-
+  [bs.c.ppe,bs.p.ppe]=twoVals(lines,'Property, Plant',ncaIdx);
+  [bs.c.investments,bs.p.investments]=twoVals(lines,'Investment',ncaIdx);
+  [bs.c.loansNCA,bs.p.loansNCA]=twoVals(lines,'Loans',ncaIdx);
+  const cwipL=findLine(lines,'Capital work',ncaIdx);if(cwipL){const v=lineNums(cwipL);bs.c.cwip=v[0];bs.p.cwip=v[1]||0}
+  const dtaL=findLine(lines,'Deferred Tax',ncaIdx);if(dtaL){const v=lineNums(dtaL);if(v.length>=4){bs.c.dta=v[0];bs.c.totalNCA=v[1];bs.p.dta=v[2];bs.p.totalNCA=v[3]}else if(v.length>=2){bs.c.dta=v[0];bs.p.dta=v[1]}}
+  if(!bs.c.totalNCA){const tncaL=findLine(lines,'Total Non-Current Assets',ncaIdx)||findLine(lines,'Total Non Current Assets',ncaIdx);if(tncaL){const v=lineNums(tncaL);bs.c.totalNCA=v[0];bs.p.totalNCA=v[1]}}
+  const taL=findLine(lines,'TOTAL ASSETS')||findLine(lines,'Total Assets');if(taL){const v=lineNums(taL);bs.c.totalAssets=v[0];bs.p.totalAssets=v[1]}
   return bs;
 }
-</script>
-<script>
-// ─── P&L Parser ───────────────────────────────────────────────────────────────
-function parsePL(text) {
-  const plStart = text.indexOf('STATEMENT OF PROFIT');
-  const searchText = plStart > 0 ? text.substring(plStart, plStart + 8000) : text;
-  const lines = searchText.split(/\n/);
-  const pl = { cur: {}, pri: {} };
 
-  function get(keyword) { return twoVals(lines, keyword); }
-
-  [pl.cur.revenue, pl.pri.revenue] = get('Revenue from Operation');
-  if (!pl.cur.revenue) [pl.cur.revenue, pl.pri.revenue] = get('Total Revenue');
-
-  const [matC, matP] = get('Cost of Materials');
-  const [conC, conP] = get('Construction Expense');
-  const [wipC, wipP] = get('Changes in Construction') || get('Changes in Inventories');
-
-  if (matC !== null || conC !== null) {
-    pl.cur.cogs = (matC || 0) + (conC || 0) - (wipC || 0);
-    pl.pri.cogs = (matP || 0) + (conP || 0) - (wipP || 0);
-  }
-
-  if (pl.cur.revenue && pl.cur.cogs) pl.cur.grossProfit = pl.cur.revenue - pl.cur.cogs;
-  if (pl.pri.revenue && pl.pri.cogs) pl.pri.grossProfit = pl.pri.revenue - pl.pri.cogs;
-
-  [pl.cur.employeeBenefits, pl.pri.employeeBenefits] = get('Employee Benefit');
-  [pl.cur.interest, pl.pri.interest] = get('Finance Cost');
-  [pl.cur.depreciation, pl.pri.depreciation] = get('Depreciation');
-  [pl.cur.otherExpenses, pl.pri.otherExpenses] = get('Other Expense');
-
-  // Tax
-  const taxLine = findLine(lines, 'Deferred tax') || findLine(lines, 'Total Tax');
-  if (taxLine) {
-    const v = lineVals(taxLine);
-    if (v.length >= 4) { pl.cur.taxes = v[1]; pl.pri.taxes = v[3]; }
-    else if (v.length >= 2) { pl.cur.taxes = v[0]; pl.pri.taxes = v[1]; }
-  }
-  if (!pl.cur.taxes) {
-    const ctL = findLine(lines, 'Current tax');
-    if (ctL) { const v = lineVals(ctL); pl.cur.taxes = v[0]; pl.pri.taxes = v[1]; }
-  }
-
-  const npL = findLine(lines, 'Profit for the year') || findLine(lines, 'Net Profit');
-  if (npL) { const v = lineVals(npL); pl.cur.netProfit = v[0]; pl.pri.netProfit = v[1]; }
-
+// ── P&L Parser ────────────────────────────────────────────────────────────────
+function parsePL(text){
+  const plStart=text.search(/STATEMENT OF PROFIT|PROFIT AND LOSS|INCOME STATEMENT/i);
+  const chunk=plStart>0?text.substring(plStart,plStart+10000):text;
+  const lines=chunk.split(/\n/);
+  const pl={c:{},p:{}};
+  [pl.c.revenue,pl.p.revenue]=twoVals(lines,'Revenue from Operation');
+  if(!pl.c.revenue)[pl.c.revenue,pl.p.revenue]=twoVals(lines,'Total Revenue');
+  [pl.c.otherIncome,pl.p.otherIncome]=twoVals(lines,'Other Income');
+  if(pl.c.revenue&&pl.c.otherIncome){pl.c.totalIncome=pl.c.revenue+pl.c.otherIncome;pl.p.totalIncome=pl.p.revenue+(pl.p.otherIncome||0)}
+  const [matC,matP]=twoVals(lines,'Cost of Materials');
+  const [conC,conP]=twoVals(lines,'Construction Expense');
+  const [wipC,wipP]=twoVals(lines,'Changes in Inventories')||twoVals(lines,'Changes in Construction');
+  if(matC!==null||conC!==null){pl.c.cogs=(matC||0)+(conC||0)-(wipC||0);pl.p.cogs=(matP||0)+(conP||0)-(wipP||0)}
+  if(pl.c.revenue&&pl.c.cogs){pl.c.grossProfit=pl.c.revenue-pl.c.cogs;pl.p.grossProfit=(pl.p.revenue||0)-(pl.p.cogs||0)}
+  [pl.c.employee,pl.p.employee]=twoVals(lines,'Employee Benefit');
+  [pl.c.finance,pl.p.finance]=twoVals(lines,'Finance Cost');
+  [pl.c.depreciation,pl.p.depreciation]=twoVals(lines,'Depreciation');
+  [pl.c.otherExp,pl.p.otherExp]=twoVals(lines,'Other Expense');
+  const ebitL=findLine(lines,'Profit before tax')||findLine(lines,'PROFIT BEFORE TAX');
+  if(ebitL){const v=lineNums(ebitL);pl.c.pbt=v[0];pl.p.pbt=v[1]}
+  const taxL=findLine(lines,'Total Tax')||findLine(lines,'Total tax');
+  if(taxL){const v=lineNums(taxL);if(v.length>=4){pl.c.tax=v[1];pl.p.tax=v[3]}else if(v.length>=2){pl.c.tax=v[0];pl.p.tax=v[1]}}
+  if(!pl.c.tax){const ctL=findLine(lines,'Current tax');if(ctL){const v=lineNums(ctL);pl.c.tax=v[0];pl.p.tax=v[1]}}
+  const npL=findLine(lines,'Profit for the year')||findLine(lines,'Net Profit')||findLine(lines,'PROFIT FOR THE YEAR');
+  if(npL){const v=lineNums(npL);pl.c.netProfit=v[0];pl.p.netProfit=v[1]}
   return pl;
 }
 
-// ─── Render Results ───────────────────────────────────────────────────────────
-function fmt(v, isNA = false) {
-  if (v === null || v === undefined) return '<td class="num na">—</td>';
-  return '<td class="num">' + v.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
-}
-function fmtP(v) {
-  if (v === null || v === undefined) return '<td class="num prior na">—</td>';
-  return '<td class="num prior">' + v.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
-}
-
-function renderResults(bs, pl) {
-  // Summary stats
-  const stats = [
-    { label: 'Total Assets', val: bs.cur.totalAssets },
-    { label: 'Total Networth', val: bs.cur.totalNetworth },
-    { label: 'Revenue', val: pl.cur.revenue },
-    { label: 'Net Profit', val: pl.cur.netProfit }
-  ];
-  const statsHtml = stats.map(s => 
-    '<div class="stat-card"><div class="stat-val">' + (s.val ? ('₹' + (s.val/100).toFixed(0) + 'Cr') : '—') + '</div><div class="stat-label">' + s.label + '</div></div>'
-  ).join('');
-  document.getElementById('summaryStats').innerHTML = statsHtml;
-
-  // Balance Sheet Table
-  const bsRows = [
-    { section: 'EQUITY & NETWORTH' },
-    { label: 'Share Capital', c: bs.cur.shareCapital, p: bs.pri.shareCapital },
-    { label: 'Other Equity', c: bs.cur.otherEquity, p: bs.pri.otherEquity },
-    { label: 'Total Networth', c: bs.cur.totalNetworth, p: bs.pri.totalNetworth, total: true },
-    { section: 'CURRENT LIABILITIES' },
-    { label: 'Short Term Borrowings', c: bs.cur.shortTermBorrowings, p: bs.pri.shortTermBorrowings },
-    { label: 'Accounts Payable', c: bs.cur.accountsPayable, p: bs.pri.accountsPayable },
-    { label: 'Other Current Liabilities', c: bs.cur.otherCurrentLiab, p: bs.pri.otherCurrentLiab },
-    { label: 'Other Financial Liabilities', c: bs.cur.otherFinLiabCL, p: bs.pri.otherFinLiabCL },
-    { label: 'Provisions', c: bs.cur.provisionsCL, p: bs.pri.provisionsCL },
-    { label: 'Total Current Liabilities', c: bs.cur.totalCurrentLiab, p: bs.pri.totalCurrentLiab, total: true },
-    { section: 'NON-CURRENT LIABILITIES' },
-    { label: 'Long Term Borrowings', c: bs.cur.ltBorrowings, p: bs.pri.ltBorrowings },
-    { label: 'Other Financial Liabilities', c: bs.cur.otherFinLiabNCL, p: bs.pri.otherFinLiabNCL },
-    { label: 'Others', c: bs.cur.othersNCL, p: bs.pri.othersNCL },
-    { label: 'Provisions', c: bs.cur.provisionNCL, p: bs.pri.provisionNCL },
-    { label: 'Total Non-Current Liabilities', c: bs.cur.totalNCL, p: bs.pri.totalNCL, total: true },
-    { label: 'TOTAL LIABILITIES', c: bs.cur.totalLiab, p: bs.pri.totalLiab, total: true },
-    { section: 'CURRENT ASSETS' },
-    { label: 'Cash & Cash Equivalents', c: bs.cur.cashEq, p: bs.pri.cashEq },
-    { label: 'Bank Balance', c: bs.cur.bankBalance, p: bs.pri.bankBalance },
-    { label: 'Inventory', c: bs.cur.inventory, p: bs.pri.inventory },
-    { label: 'Accounts Receivable', c: bs.cur.accountsReceivable, p: bs.pri.accountsReceivable },
-    { label: 'Loans', c: bs.cur.loansCA, p: bs.pri.loansCA },
-    { label: 'Other Financial Assets', c: bs.cur.otherFinAssetsCA, p: bs.pri.otherFinAssetsCA },
-    { label: 'Other Current Assets', c: bs.cur.otherCurrentAssets, p: bs.pri.otherCurrentAssets },
-    { label: 'Total Current Assets', c: bs.cur.totalCurrentAssets, p: bs.pri.totalCurrentAssets, total: true },
-    { section: 'NON-CURRENT ASSETS' },
-    { label: 'Fixed Assets (PPE)', c: bs.cur.fixedAssets, p: bs.pri.fixedAssets },
-    { label: 'Investments', c: bs.cur.investmentsNCA, p: bs.pri.investmentsNCA },
-    { label: 'Loans', c: bs.cur.loansNCA, p: bs.pri.loansNCA },
-    { label: 'Capital Work-in-Progress', c: bs.cur.cwip, p: bs.pri.cwip },
-    { label: 'Deferred Tax Assets', c: bs.cur.dta, p: bs.pri.dta },
-    { label: 'Total Non-Current Assets', c: bs.cur.totalNCA, p: bs.pri.totalNCA, total: true },
-    { label: 'TOTAL ASSETS', c: bs.cur.totalAssets, p: bs.pri.totalAssets, total: true }
-  ];
-
-  let bsHtml = '<thead><tr><th>Particulars</th><th style="text-align:right">FY Current (₹ Lakhs)</th><th style="text-align:right">FY Prior (₹ Lakhs)</th></tr></thead><tbody>';
-  for (const row of bsRows) {
-    if (row.section) { bsHtml += '<tr class="section-row"><td colspan="3">' + row.section + '</td></tr>'; continue; }
-    const cls = row.total ? ' class="total-row"' : '';
-    bsHtml += '<tr' + cls + '><td>' + row.label + '</td>' + fmt(row.c) + fmtP(row.p) + '</tr>';
-  }
-  bsHtml += '</tbody>';
-  document.getElementById('bsTable').innerHTML = bsHtml;
-
-  // P&L Table
-  const plRows = [
-    { label: 'Revenue from Operations', c: pl.cur.revenue, p: pl.pri.revenue },
-    { label: 'Cost of Goods Sold', c: pl.cur.cogs, p: pl.pri.cogs },
-    { label: 'Gross Profit', c: pl.cur.grossProfit, p: pl.pri.grossProfit, total: true },
-    { label: 'Employee Benefits Expense', c: pl.cur.employeeBenefits, p: pl.pri.employeeBenefits },
-    { label: 'Finance Costs (Interest)', c: pl.cur.interest, p: pl.pri.interest },
-    { label: 'Depreciation & Amortisation', c: pl.cur.depreciation, p: pl.pri.depreciation },
-    { label: 'Other Expenses', c: pl.cur.otherExpenses, p: pl.pri.otherExpenses },
-    { label: 'Total Tax', c: pl.cur.taxes, p: pl.pri.taxes },
-    { label: 'Net Profit for the Year', c: pl.cur.netProfit, p: pl.pri.netProfit, total: true }
-  ];
-  let plHtml = '<thead><tr><th>Particulars</th><th style="text-align:right">FY Current (₹ Lakhs)</th><th style="text-align:right">FY Prior (₹ Lakhs)</th></tr></thead><tbody>';
-  for (const row of plRows) {
-    const cls = row.total ? ' class="total-row"' : '';
-    plHtml += '<tr' + cls + '><td>' + row.label + '</td>' + fmt(row.c) + fmtP(row.p) + '</tr>';
-  }
-  plHtml += '</tbody>';
-  document.getElementById('plTable').innerHTML = plHtml;
+// ── Compute Ratios ────────────────────────────────────────────────────────────
+function computeRatios(bs,pl){
+  const r={};
+  const safe=(a,b)=>(a&&b&&b!==0)?+(a/b).toFixed(2):null;
+  r.currentRatio=safe(bs.c.totalCA,bs.c.totalCL);
+  r.debtEquity=safe((bs.c.stBorrow||0)+(bs.c.ltBorrow||0),bs.c.networth);
+  r.grossMargin=pl.c.revenue&&pl.c.grossProfit?+((pl.c.grossProfit/pl.c.revenue)*100).toFixed(2):null;
+  r.netMargin=pl.c.revenue&&pl.c.netProfit?+((pl.c.netProfit/pl.c.revenue)*100).toFixed(2):null;
+  r.roe=pl.c.netProfit&&bs.c.networth?+((pl.c.netProfit/bs.c.networth)*100).toFixed(2):null;
+  r.roa=pl.c.netProfit&&bs.c.totalAssets?+((pl.c.netProfit/bs.c.totalAssets)*100).toFixed(2):null;
+  r.assetTurnover=safe(pl.c.revenue,bs.c.totalAssets);
+  r.inventoryDays=pl.c.cogs&&bs.c.inventory?+((bs.c.inventory/pl.c.cogs)*365).toFixed(0):null;
+  r.debtorDays=pl.c.revenue&&bs.c.receivables?+((bs.c.receivables/pl.c.revenue)*365).toFixed(0):null;
+  return r;
 }
 </script>
 <script>
-// ─── Excel Download ───────────────────────────────────────────────────────────
-function downloadExcel() {
-  if (!extractedData) { alert('Please extract data first.'); return; }
-  const { company, bs, pl } = extractedData;
+// ── Main Extract ──────────────────────────────────────────────────────────────
+async function extractData(){
+  if(!window._file){log('Please select a PDF file first','err');return}
+  const btn=document.getElementById('extractBtn');
+  const spin=document.getElementById('spinner');
+  const btnTxt=document.getElementById('extractBtnText');
+  btn.disabled=true;spin.style.display='inline-block';btnTxt.textContent='Extracting...';
+  document.getElementById('logContent').innerHTML='';
+  showLog('info');
+  try{
+    setProgress(10,'Loading PDF...');log('Loading PDF...','info');
+    const buf=await window._file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    log('PDF loaded: '+pdf.numPages+' pages','ok');
+    setProgress(30,'Extracting text...');
+    let txt='';
+    for(let i=1;i<=pdf.numPages;i++){
+      setProgress(30+Math.round(i/pdf.numPages*35),'Reading page '+i+'/'+pdf.numPages);
+      const pg=await pdf.getPage(i);
+      const ct=await pg.getTextContent();
+      txt+=ct.items.map(x=>x.str).join(' ')+'\n';
+    }
+    pdfText=txt;
+    log('Text extracted: '+txt.length.toLocaleString()+' chars','ok');
+    document.getElementById('rawTxt').textContent=txt.substring(0,5000);
+    setProgress(70,'Parsing Balance Sheet...');
+    const bs=parseBS(txt);
+    log('Balance Sheet parsed','ok');
+    setProgress(80,'Parsing P&L...');
+    const pl=parsePL(txt);
+    log('P&L parsed','ok');
+    setProgress(90,'Computing ratios...');
+    const ratios=computeRatios(bs,pl);
+    const company=document.getElementById('companyName').value||'Company';
+    extractedData={company,bs,pl,ratios};
+    setProgress(98,'Rendering...');
+    renderAll(bs,pl,ratios);
+    setProgress(100,'Done!');
+    log('Extraction complete!','ok');
+    showLog('success');
+    hideProgress();
+    document.getElementById('resultsSection').classList.add('show');
+    document.getElementById('resultsSection').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(err){
+    log('Error: '+err.message,'err');showLog('error');hideProgress();console.error(err);
+  }finally{
+    btn.disabled=false;spin.style.display='none';btnTxt.textContent='⚡ Extract Financial Data';
+  }
+}
 
-  const wb = XLSX.utils.book_new();
-  const BLUE = { fgColor: { rgb: '0070C0' } };
+// ── Render ────────────────────────────────────────────────────────────────────
+function fmtN(v,cls=''){
+  if(v===null||v===undefined)return `<td class="r na${cls?'':''}">—</td>`;
+  return `<td class="r${cls?' '+cls:''}">${v.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>`;
+}
+function fmtP(v){return fmtN(v,'p')}
 
-  // Build Balance Sheet data
-  const bsData = [
-    [company + ' - Financial Summary (INR in Lakhs)', '', ''],
-    ['', 'FY Current', 'FY Prior'],
-    ['BALANCE SHEET PARTICULARS', '', ''],
-    ['', '', ''],
-    ['NETWORTH', '', ''],
-    ['Share Capital', bs.cur.shareCapital, bs.pri.shareCapital],
-    ['Other Equity', bs.cur.otherEquity, bs.pri.otherEquity],
-    ['Total Networth', bs.cur.totalNetworth, bs.pri.totalNetworth],
-    ['', '', ''],
-    ['CURRENT LIABILITIES', '', ''],
-    ['Short Term Borrowings', bs.cur.shortTermBorrowings, bs.pri.shortTermBorrowings],
-    ['Accounts Payable', bs.cur.accountsPayable, bs.pri.accountsPayable],
-    ['Other Current Liabilities', bs.cur.otherCurrentLiab, bs.pri.otherCurrentLiab],
-    ['Other Financial Liabilities', bs.cur.otherFinLiabCL, bs.pri.otherFinLiabCL],
-    ['Provisions', bs.cur.provisionsCL, bs.pri.provisionsCL],
-    ['Total Current Liabilities', bs.cur.totalCurrentLiab, bs.pri.totalCurrentLiab],
-    ['', '', ''],
-    ['NON-CURRENT LIABILITIES', '', ''],
-    ['Long Term Borrowings', bs.cur.ltBorrowings, bs.pri.ltBorrowings],
-    ['Other Financial Liabilities', bs.cur.otherFinLiabNCL, bs.pri.otherFinLiabNCL],
-    ['Others', bs.cur.othersNCL, bs.pri.othersNCL],
-    ['Provisions', bs.cur.provisionNCL, bs.pri.provisionNCL],
-    ['Total Non-Current Liabilities', bs.cur.totalNCL, bs.pri.totalNCL],
-    ['TOTAL LIABILITIES', bs.cur.totalLiab, bs.pri.totalLiab],
-    ['', '', ''],
-    ['CURRENT ASSETS', '', ''],
-    ['Cash & Cash Equivalents', bs.cur.cashEq, bs.pri.cashEq],
-    ['Bank Balance', bs.cur.bankBalance, bs.pri.bankBalance],
-    ['Inventory', bs.cur.inventory, bs.pri.inventory],
-    ['Accounts Receivable', bs.cur.accountsReceivable, bs.pri.accountsReceivable],
-    ['Loans', bs.cur.loansCA, bs.pri.loansCA],
-    ['Other Financial Assets', bs.cur.otherFinAssetsCA, bs.pri.otherFinAssetsCA],
-    ['Other Current Assets', bs.cur.otherCurrentAssets, bs.pri.otherCurrentAssets],
-    ['Total Current Assets', bs.cur.totalCurrentAssets, bs.pri.totalCurrentAssets],
-    ['', '', ''],
-    ['NON-CURRENT ASSETS', '', ''],
-    ['Fixed Assets (PPE)', bs.cur.fixedAssets, bs.pri.fixedAssets],
-    ['Investments', bs.cur.investmentsNCA, bs.pri.investmentsNCA],
-    ['Loans', bs.cur.loansNCA, bs.pri.loansNCA],
-    ['Capital Work-in-Progress', bs.cur.cwip, bs.pri.cwip],
-    ['Deferred Tax Assets', bs.cur.dta, bs.pri.dta],
-    ['Total Non-Current Assets', bs.cur.totalNCA, bs.pri.totalNCA],
-    ['TOTAL ASSETS', bs.cur.totalAssets, bs.pri.totalAssets],
-    ['', '', ''],
-    ['DIFFERENCE (Assets - Liabilities - Networth)',
-      ((bs.cur.totalAssets || 0) - (bs.cur.totalLiab || 0) - (bs.cur.totalNetworth || 0)),
-      ((bs.pri.totalAssets || 0) - (bs.pri.totalLiab || 0) - (bs.pri.totalNetworth || 0))
-    ],
-    ['', '', ''],
-    ['P&L STATEMENT PARTICULARS', '', ''],
-    ['Revenue from Operations', pl.cur.revenue, pl.pri.revenue],
-    ['Cost of Goods Sold', pl.cur.cogs, pl.pri.cogs],
-    ['Gross Profit', pl.cur.grossProfit, pl.pri.grossProfit],
-    ['Employee Benefits Expense', pl.cur.employeeBenefits, pl.pri.employeeBenefits],
-    ['Finance Costs (Interest)', pl.cur.interest, pl.pri.interest],
-    ['Depreciation & Amortisation', pl.cur.depreciation, pl.pri.depreciation],
-    ['Other Expenses', pl.cur.otherExpenses, pl.pri.otherExpenses],
-    ['Total Tax', pl.cur.taxes, pl.pri.taxes],
-    ['Net Profit for the Year', pl.cur.netProfit, pl.pri.netProfit]
+function renderAll(bs,pl,ratios){
+  // Stats
+  const stats=[
+    {icon:'🏦',lbl:'Total Assets',val:bs.c.totalAssets,cls:''},
+    {icon:'💰',lbl:'Net Worth',val:bs.c.networth,cls:'green'},
+    {icon:'📈',lbl:'Revenue',val:pl.c.revenue,cls:''},
+    {icon:'✅',lbl:'Net Profit',val:pl.c.netProfit,cls:pl.c.netProfit>0?'green':'red'}
   ];
+  document.getElementById('statsGrid').innerHTML=stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-icon">${s.icon}</div>
+      <div class="stat-val ${s.cls}">${s.val?'₹'+fmtCr(s.val):'—'}</div>
+      <div class="stat-lbl">${s.lbl}</div>
+    </div>`).join('');
 
-  const ws = XLSX.utils.aoa_to_sheet(bsData);
+  // BS Table
+  const bsRows=[
+    {sec:'EQUITY & NETWORTH'},
+    {lbl:'Share Capital',c:bs.c.shareCapital,p:bs.p.shareCapital},
+    {lbl:'Other Equity / Reserves',c:bs.c.otherEquity,p:bs.p.otherEquity},
+    {lbl:'Total Networth',c:bs.c.networth,p:bs.p.networth,tot:true},
+    {sec:'CURRENT LIABILITIES'},
+    {lbl:'Short Term Borrowings',c:bs.c.stBorrow,p:bs.p.stBorrow},
+    {lbl:'Trade Payables',c:bs.c.tradePayable,p:bs.p.tradePayable},
+    {lbl:'Other Current Liabilities',c:bs.c.otherCurLiab,p:bs.p.otherCurLiab},
+    {lbl:'Other Financial Liabilities',c:bs.c.otherFinLiabCL,p:bs.p.otherFinLiabCL},
+    {lbl:'Provisions',c:bs.c.provisionCL,p:bs.p.provisionCL},
+    {lbl:'Total Current Liabilities',c:bs.c.totalCL,p:bs.p.totalCL,tot:true},
+    {sec:'NON-CURRENT LIABILITIES'},
+    {lbl:'Long Term Borrowings',c:bs.c.ltBorrow,p:bs.p.ltBorrow},
+    {lbl:'Other Financial Liabilities',c:bs.c.otherFinLiabNCL,p:bs.p.otherFinLiabNCL},
+    {lbl:'Other NCL',c:bs.c.othersNCL,p:bs.p.othersNCL},
+    {lbl:'Provisions',c:bs.c.provisionNCL,p:bs.p.provisionNCL},
+    {lbl:'Total Non-Current Liabilities',c:bs.c.totalNCL,p:bs.p.totalNCL,tot:true},
+    {lbl:'TOTAL LIABILITIES',c:bs.c.totalLiab,p:bs.p.totalLiab,tot:true},
+    {sec:'CURRENT ASSETS'},
+    {lbl:'Cash & Cash Equivalents',c:bs.c.cash,p:bs.p.cash},
+    {lbl:'Bank Balance',c:bs.c.bankBal,p:bs.p.bankBal},
+    {lbl:'Inventories',c:bs.c.inventory,p:bs.p.inventory},
+    {lbl:'Trade Receivables',c:bs.c.receivables,p:bs.p.receivables},
+    {lbl:'Loans',c:bs.c.loansCA,p:bs.p.loansCA},
+    {lbl:'Other Financial Assets',c:bs.c.otherFinAssetsCA,p:bs.p.otherFinAssetsCA},
+    {lbl:'Other Current Assets',c:bs.c.otherCA,p:bs.p.otherCA},
+    {lbl:'Total Current Assets',c:bs.c.totalCA,p:bs.p.totalCA,tot:true},
+    {sec:'NON-CURRENT ASSETS'},
+    {lbl:'Property, Plant & Equipment',c:bs.c.ppe,p:bs.p.ppe},
+    {lbl:'Investments',c:bs.c.investments,p:bs.p.investments},
+    {lbl:'Capital Work-in-Progress',c:bs.c.cwip,p:bs.p.cwip},
+    {lbl:'Loans',c:bs.c.loansNCA,p:bs.p.loansNCA},
+    {lbl:'Deferred Tax Assets',c:bs.c.dta,p:bs.p.dta},
+    {lbl:'Total Non-Current Assets',c:bs.c.totalNCA,p:bs.p.totalNCA,tot:true},
+    {lbl:'TOTAL ASSETS',c:bs.c.totalAssets,p:bs.p.totalAssets,tot:true}
+  ];
+  let bsH=`<thead><tr><th>Particulars</th><th class="r">FY Current (₹ Lakhs)</th><th class="r">FY Prior (₹ Lakhs)</th></tr></thead><tbody>`;
+  for(const r of bsRows){
+    if(r.sec){bsH+=`<tr class="sec"><td colspan="3">${r.sec}</td></tr>`;continue}
+    bsH+=`<tr${r.tot?' class="tot"':''}><td>${r.lbl}</td>${fmtN(r.c)}${fmtP(r.p)}</tr>`;
+  }
+  document.getElementById('bsTable').innerHTML=bsH+'</tbody>';
 
-  // Column widths
-  ws['!cols'] = [{ wch: 40 }, { wch: 18 }, { wch: 18 }];
+  // PL Table
+  const plRows=[
+    {lbl:'Revenue from Operations',c:pl.c.revenue,p:pl.p.revenue},
+    {lbl:'Other Income',c:pl.c.otherIncome,p:pl.p.otherIncome},
+    {lbl:'Total Income',c:pl.c.totalIncome,p:pl.p.totalIncome,tot:true},
+    {lbl:'Cost of Goods Sold / Materials',c:pl.c.cogs,p:pl.p.cogs},
+    {lbl:'Gross Profit',c:pl.c.grossProfit,p:pl.p.grossProfit,tot:true},
+    {lbl:'Employee Benefits Expense',c:pl.c.employee,p:pl.p.employee},
+    {lbl:'Finance Costs (Interest)',c:pl.c.finance,p:pl.p.finance},
+    {lbl:'Depreciation & Amortisation',c:pl.c.depreciation,p:pl.p.depreciation},
+    {lbl:'Other Expenses',c:pl.c.otherExp,p:pl.p.otherExp},
+    {lbl:'Profit Before Tax',c:pl.c.pbt,p:pl.p.pbt,tot:true},
+    {lbl:'Total Tax',c:pl.c.tax,p:pl.p.tax},
+    {lbl:'Net Profit for the Year',c:pl.c.netProfit,p:pl.p.netProfit,tot:true}
+  ];
+  let plH=`<thead><tr><th>Particulars</th><th class="r">FY Current (₹ Lakhs)</th><th class="r">FY Prior (₹ Lakhs)</th></tr></thead><tbody>`;
+  for(const r of plRows){plH+=`<tr${r.tot?' class="tot"':''}><td>${r.lbl}</td>${fmtN(r.c)}${fmtP(r.p)}</tr>`}
+  document.getElementById('plTable').innerHTML=plH+'</tbody>';
 
-  XLSX.utils.book_append_sheet(wb, ws, 'Financial Summary');
+  // Ratios
+  const ratioItems=[
+    {name:'Current Ratio',val:ratios.currentRatio,unit:'x',info:'> 1.5 is good'},
+    {name:'Debt/Equity',val:ratios.debtEquity,unit:'x',info:'< 1 is safe'},
+    {name:'Gross Margin',val:ratios.grossMargin,unit:'%',info:'Higher is better'},
+    {name:'Net Margin',val:ratios.netMargin,unit:'%',info:'Higher is better'},
+    {name:'ROE',val:ratios.roe,unit:'%',info:'Return on Equity'},
+    {name:'ROA',val:ratios.roa,unit:'%',info:'Return on Assets'},
+    {name:'Asset Turnover',val:ratios.assetTurnover,unit:'x',info:'Revenue/Assets'},
+    {name:'Inventory Days',val:ratios.inventoryDays,unit:' days',info:'Lower is better'},
+    {name:'Debtor Days',val:ratios.debtorDays,unit:' days',info:'Lower is better'}
+  ];
+  document.getElementById('ratioGrid').innerHTML=ratioItems.map(r=>`
+    <div class="ratio-card">
+      <div class="ratio-name">${r.name}<br><small style="color:#37474f">${r.info}</small></div>
+      <div class="ratio-val">${r.val!==null?r.val+r.unit:'—'}</div>
+    </div>`).join('');
+}
 
-  // Generate filename
-  const safeCompany = (company || 'Report').replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/ +/g, '_');
-  const today = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, safeCompany + '_FinancialSummary_' + today + '.xlsx');
+function fmtCr(v){if(!v)return'—';if(Math.abs(v)>=10000)return(v/100).toFixed(0)+'Cr';if(Math.abs(v)>=100)return(v/100).toFixed(2)+'Cr';return v.toLocaleString('en-IN')+'L'}
+</script>
+<script>
+// ── Excel Download ────────────────────────────────────────────────────────────
+function downloadExcel(){
+  if(!extractedData){alert('Please extract data first.');return}
+  const{company,bs,pl,ratios}=extractedData;
+  const wb=XLSX.utils.book_new();
+
+  // Helper
+  const mkSheet=(data)=>{
+    const ws=XLSX.utils.aoa_to_sheet(data);
+    ws['!cols']=[{wch:42},{wch:20},{wch:20}];
+    return ws;
+  };
+
+  // Balance Sheet Sheet
+  const bsData=[
+    [company+' — Balance Sheet (INR in Lakhs)','',''],
+    ['Particulars','FY Current','FY Prior'],
+    ['','',''],
+    ['EQUITY & NETWORTH','',''],
+    ['Share Capital',bs.c.shareCapital,bs.p.shareCapital],
+    ['Other Equity / Reserves',bs.c.otherEquity,bs.p.otherEquity],
+    ['Total Networth',bs.c.networth,bs.p.networth],
+    ['','',''],
+    ['CURRENT LIABILITIES','',''],
+    ['Short Term Borrowings',bs.c.stBorrow,bs.p.stBorrow],
+    ['Trade Payables',bs.c.tradePayable,bs.p.tradePayable],
+    ['Other Current Liabilities',bs.c.otherCurLiab,bs.p.otherCurLiab],
+    ['Other Financial Liabilities',bs.c.otherFinLiabCL,bs.p.otherFinLiabCL],
+    ['Provisions',bs.c.provisionCL,bs.p.provisionCL],
+    ['Total Current Liabilities',bs.c.totalCL,bs.p.totalCL],
+    ['','',''],
+    ['NON-CURRENT LIABILITIES','',''],
+    ['Long Term Borrowings',bs.c.ltBorrow,bs.p.ltBorrow],
+    ['Other Financial Liabilities',bs.c.otherFinLiabNCL,bs.p.otherFinLiabNCL],
+    ['Other NCL',bs.c.othersNCL,bs.p.othersNCL],
+    ['Provisions',bs.c.provisionNCL,bs.p.provisionNCL],
+    ['Total Non-Current Liabilities',bs.c.totalNCL,bs.p.totalNCL],
+    ['TOTAL LIABILITIES',bs.c.totalLiab,bs.p.totalLiab],
+    ['','',''],
+    ['CURRENT ASSETS','',''],
+    ['Cash & Cash Equivalents',bs.c.cash,bs.p.cash],
+    ['Bank Balance',bs.c.bankBal,bs.p.bankBal],
+    ['Inventories',bs.c.inventory,bs.p.inventory],
+    ['Trade Receivables',bs.c.receivables,bs.p.receivables],
+    ['Loans',bs.c.loansCA,bs.p.loansCA],
+    ['Other Financial Assets',bs.c.otherFinAssetsCA,bs.p.otherFinAssetsCA],
+    ['Other Current Assets',bs.c.otherCA,bs.p.otherCA],
+    ['Total Current Assets',bs.c.totalCA,bs.p.totalCA],
+    ['','',''],
+    ['NON-CURRENT ASSETS','',''],
+    ['Property, Plant & Equipment',bs.c.ppe,bs.p.ppe],
+    ['Investments',bs.c.investments,bs.p.investments],
+    ['Capital Work-in-Progress',bs.c.cwip,bs.p.cwip],
+    ['Loans',bs.c.loansNCA,bs.p.loansNCA],
+    ['Deferred Tax Assets',bs.c.dta,bs.p.dta],
+    ['Total Non-Current Assets',bs.c.totalNCA,bs.p.totalNCA],
+    ['TOTAL ASSETS',bs.c.totalAssets,bs.p.totalAssets],
+    ['','',''],
+    ['CHECK (Assets - Liabilities - Networth)',((bs.c.totalAssets||0)-(bs.c.totalLiab||0)-(bs.c.networth||0)),((bs.p.totalAssets||0)-(bs.p.totalLiab||0)-(bs.p.networth||0))]
+  ];
+  XLSX.utils.book_append_sheet(wb,mkSheet(bsData),'Balance Sheet');
+
+  // P&L Sheet
+  const plData=[
+    [company+' — P&L Statement (INR in Lakhs)','',''],
+    ['Particulars','FY Current','FY Prior'],
+    ['Revenue from Operations',pl.c.revenue,pl.p.revenue],
+    ['Other Income',pl.c.otherIncome,pl.p.otherIncome],
+    ['Total Income',pl.c.totalIncome,pl.p.totalIncome],
+    ['','',''],
+    ['Cost of Goods Sold / Materials',pl.c.cogs,pl.p.cogs],
+    ['Gross Profit',pl.c.grossProfit,pl.p.grossProfit],
+    ['','',''],
+    ['Employee Benefits Expense',pl.c.employee,pl.p.employee],
+    ['Finance Costs (Interest)',pl.c.finance,pl.p.finance],
+    ['Depreciation & Amortisation',pl.c.depreciation,pl.p.depreciation],
+    ['Other Expenses',pl.c.otherExp,pl.p.otherExp],
+    ['','',''],
+    ['Profit Before Tax',pl.c.pbt,pl.p.pbt],
+    ['Total Tax',pl.c.tax,pl.p.tax],
+    ['Net Profit for the Year',pl.c.netProfit,pl.p.netProfit]
+  ];
+  XLSX.utils.book_append_sheet(wb,mkSheet(plData),'P&L Statement');
+
+  // Ratios Sheet
+  const rData=[
+    [company+' — Financial Ratios',''],
+    ['Ratio','FY Current'],
+    ['Current Ratio (x)',ratios.currentRatio],
+    ['Debt/Equity Ratio (x)',ratios.debtEquity],
+    ['Gross Profit Margin (%)',ratios.grossMargin],
+    ['Net Profit Margin (%)',ratios.netMargin],
+    ['Return on Equity - ROE (%)',ratios.roe],
+    ['Return on Assets - ROA (%)',ratios.roa],
+    ['Asset Turnover (x)',ratios.assetTurnover],
+    ['Inventory Days',ratios.inventoryDays],
+    ['Debtor Days',ratios.debtorDays]
+  ];
+  const rwsSheet=XLSX.utils.aoa_to_sheet(rData);
+  rwsSheet['!cols']=[{wch:35},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,rwsSheet,'Financial Ratios');
+
+  const safe=(company||'Report').replace(/[^a-zA-Z0-9 ]/g,'').trim().replace(/ +/g,'_');
+  const today=new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb,safe+'_AnnualReport_'+today+'.xlsx');
 }
 </script>
 </body>
